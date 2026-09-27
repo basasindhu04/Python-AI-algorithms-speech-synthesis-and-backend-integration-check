@@ -29,7 +29,15 @@ class RecommendationService:
         pivot_df = df.pivot_table(index="user_id", columns="item_id", values="rating").fillna(0.0)
 
         if target_user_id not in pivot_df.index:
-            return []
+            mean_ratings = df.groupby("item_id")["rating"].mean().sort_values(ascending=False)
+            results = []
+            for item_id, score in mean_ratings.head(top_k).items():
+                results.append({
+                    "item_id": str(item_id),
+                    "predicted_score": float(score),
+                    "explanation": "Cold-start fallback: Popular item recommendation"
+                })
+            return results
 
         target_vector = pivot_df.loc[target_user_id].values
         user_ids = pivot_df.index.tolist()
