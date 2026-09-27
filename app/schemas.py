@@ -44,3 +44,36 @@ class SearchResponse(BaseModel):
     execution_time_ms: float
     heuristic_used: str
     path_found: bool
+
+# --- Recommendation System Schemas ---
+
+class UserItemRating(BaseModel):
+    user_id: str
+    item_id: str
+    rating: float = Field(..., ge=0.0, le=5.0)
+
+class RecommendationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    
+    ratings: List[UserItemRating]
+    target_user_id: str
+    strategy: Literal["collaborative", "content_based", "hybrid"] = Field(
+        default="collaborative",
+        description="Recommendation strategy algorithm"
+    )
+    item_features: Optional[Dict[str, List[float]]] = Field(
+        default=None,
+        description="Feature vectors for items (used in content-based / hybrid strategies)"
+    )
+    top_k: int = Field(default=5, ge=1, le=50)
+
+class RecommendedItem(BaseModel):
+    item_id: str
+    predicted_score: float
+    explanation: str
+
+class RecommendationResponse(BaseModel):
+    target_user_id: str
+    strategy_used: str
+    recommendations: List[RecommendedItem]
+    execution_time_ms: float
