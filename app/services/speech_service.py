@@ -47,3 +47,19 @@ class SpeechService:
             "engine_backend": engine_backend,
             "execution_time_ms": (end_time - start_time) * 1000
         }
+
+    @classmethod
+    async def synthesize_speech_async(
+        cls,
+        text: str,
+        rate: int = 150,
+        volume: float = 1.0,
+        save_file: bool = False
+    ) -> Dict[str, Any]:
+        return await asyncio.to_thread(
+            cls.synthesize_speech,
+            text=text,
+            rate=rate,
+            volume=volume,
+            save_file=save_file
+        )
