@@ -105,3 +105,21 @@ class TextSimilarityResponse(BaseModel):
     method_used: str
     results: List[DocumentSimilarityScore]
     execution_time_ms: float
+
+# --- Speech Synthesis Schemas ---
+
+class SpeechSynthesisRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    
+    text: str = Field(..., min_length=1, max_length=2000, description="Text to synthesize")
+    rate: int = Field(default=150, ge=50, le=300, description="Speech rate (words per minute)")
+    volume: float = Field(default=1.0, ge=0.0, le=1.0, description="Volume level between 0.0 and 1.0")
+    save_file: bool = Field(default=False, description="Save audio output to WAV file")
+
+class SpeechSynthesisResponse(BaseModel):
+    text: str
+    duration_seconds_estimate: float
+    output_file_path: Optional[str] = None
+    engine_backend: str
+    local_vs_cloud_tradeoffs: Dict[str, str]
+    execution_time_ms: float
