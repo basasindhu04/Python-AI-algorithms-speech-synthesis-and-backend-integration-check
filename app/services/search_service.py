@@ -11,6 +11,9 @@ class SearchService:
         goal: Tuple[int, int], 
         heuristic_type: str = "manhattan"
     ) -> float:
+        """
+        Calculate admissible & consistent heuristic h(n) from current node to goal.
+        """
         dr = abs(node[0] - goal[0])
         dc = abs(node[1] - goal[1])
         
@@ -32,12 +35,17 @@ class SearchService:
         heuristic_type: str = "manhattan",
         allow_diagonal: bool = False
     ) -> Dict[str, Any]:
+        """
+        Run A* algorithm on a 2D binary grid.
+        0 = Open path, 1 = Obstacle
+        """
         start_time = time.perf_counter()
         rows = len(grid)
         if rows == 0:
             raise ValueError("Grid cannot be empty")
         cols = len(grid[0])
         
+        # Check start & goal bounds and validity
         if not (0 <= start[0] < rows and 0 <= start[1] < cols):
             raise ValueError(f"Start node {start} out of grid bounds ({rows}x{cols})")
         if not (0 <= goal[0] < rows and 0 <= goal[1] < cols):
@@ -52,6 +60,7 @@ class SearchService:
                 "path_found": False
             }
 
+        # Directions: 4-way or 8-way
         directions = [(0, 1, 1.0), (1, 0, 1.0), (0, -1, 1.0), (-1, 0, 1.0)]
         if allow_diagonal:
             diag_cost = math.sqrt(2.0)
@@ -68,6 +77,7 @@ class SearchService:
         came_from: Dict[Tuple[int, int], Tuple[int, int]] = {}
         visited = set()
         nodes_expanded = 0
+
         path_found = False
 
         while open_set:
@@ -88,7 +98,7 @@ class SearchService:
 
                 if 0 <= neighbor[0] < rows and 0 <= neighbor[1] < cols:
                     if grid[neighbor[0]][neighbor[1]] == 1:
-                        continue
+                        continue  # Obstacle
 
                     tentative_g = current_g + step_cost
                     if neighbor not in g_score or tentative_g < g_score[neighbor]:
@@ -115,5 +125,85 @@ class SearchService:
             "nodes_expanded": nodes_expanded,
             "execution_time_ms": (end_time - start_time) * 1000,
             "heuristic_used": heuristic_type,
+            "path_found": path_found
+        }
+
+    @staticmethod
+    def graph_a_star(
+        start: str,
+        goal: str,
+        edges: List[Dict[str, Any]],
+        heuristics: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
+        """
+        Run A* on a general graph defined by edge list and heuristic h(n) dict.
+        """
+        start_time = time.perf_counter()
+        
+        # Build NetworkX graph
+        G = nx.DiGraph()
+        for edge in edges:
+            G.add_edge(edge["source"], edge["target"], weight=float(edge["weight"]))
+
+        if start not in G:
+            G.add_node(start)
+        if goal not in G:
+            G.add_node(goal)
+
+        h_map = heuristics or {}
+
+        def heuristic_fn(u: str, v: str) -> float:
+            return h_map.get(u, 0.0)
+
+        path_found = False
+        path = []
+        cost = 0.0
+        nodes_expanded = 0
+
+        open_set = []
+        heapq.heappush(open_set, (heuristic_fn(start, goal), 0.0, start))
+        g_score = {start: 0.0}
+        came_from = {}
+        visited = set()
+
+        while open_set:
+            f, current_g, current = heapq.heappop(open_set)
+
+            if current in visited:
+                continue
+
+            visited.add(current)
+            nodes_expanded += 1
+
+            if current == goal:
+                path_found = True
+                cost = current_g
+                break
+
+            for neighbor in G.neighbors(current):
+                weight = G[current][neighbor].get("weight", 1.0)
+                tentative_g = current_g + weight
+
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    g_score[neighbor] = tentative_g
+                    came_from[neighbor] = current
+                    h = heuristic_fn(neighbor, goal)
+                    heapq.heappush(open_set, (tentative_g + h, tentative_g, neighbor))
+
+        if path_found:
+            curr = goal
+            while curr in came_from:
+                path.append(curr)
+                curr = came_from[curr]
+            path.append(start)
+            path.reverse()
+
+        end_time = time.perf_counter()
+        return {
+            "path": path,
+            "cost": cost,
+            "nodes_expanded": nodes_expanded,
+            "execution_time_ms": (end_time - start_time) * 1000,
+            "heuristic_used": "custom_dict" if heuristics else "dijkstra_fallback",
             "path_found": path_found
         }
