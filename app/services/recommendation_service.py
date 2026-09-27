@@ -78,3 +78,54 @@ class RecommendationService:
             }
             for item_id, score in top_recs
         ]
+
+    @classmethod
+    def content_based_filtering(
+        cls,
+        ratings_data: List[Dict[str, Any]],
+        target_user_id: str,
+        item_features: Dict[str, List[float]],
+        top_k: int = 5
+    ) -> List[Dict[str, Any]]:
+        df = pd.DataFrame(ratings_data)
+        user_ratings = df[df["user_id"] == target_user_id]
+        
+        if user_ratings.empty or not item_features:
+            return []
+
+        first_feature = next(iter(item_features.values()))
+        feature_dim = len(first_feature)
+        user_profile = np.zeros(feature_dim, dtype=np.float64)
+        total_weight = 0.0
+
+        rated_items = set()
+        for _, row in user_ratings.iterrows():
+            item_id = str(row["item_id"])
+            rating = float(row["rating"])
+            rated_items.add(item_id)
+            if item_id in item_features:
+                user_profile += rating * np.array(item_features[item_id], dtype=np.float64)
+                total_weight += rating
+
+        if total_weight > 0:
+            user_profile /= total_weight
+
+        predictions = []
+        for item_id, feat_vec in item_features.items():
+            if item_id in rated_items:
+                continue
+            feat_arr = np.array(feat_vec, dtype=np.float64)
+            sim = cls._cosine_similarity(user_profile, feat_arr)
+            predictions.append((item_id, sim))
+
+        predictions.sort(key=lambda x: x[1], reverse=True)
+        top_recs = predictions[:top_k]
+
+        return [
+            {
+                "item_id": str(item_id),
+                "predicted_score": round(float(score), 4),
+                "explanation": "Content-based feature vector similarity matching user taste profile"
+            }
+            for item_id, score in top_recs
+        ]
