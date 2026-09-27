@@ -77,3 +77,31 @@ class RecommendationResponse(BaseModel):
     strategy_used: str
     recommendations: List[RecommendedItem]
     execution_time_ms: float
+
+# --- NLP & Embedding Schemas ---
+
+class TextDocument(BaseModel):
+    doc_id: str
+    text: str
+
+class TextSimilarityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    
+    query: str
+    documents: List[TextDocument]
+    method: Literal["tfidf", "vector_average"] = Field(
+        default="tfidf",
+        description="NLP similarity algorithm"
+    )
+    top_k: int = Field(default=5, ge=1, le=50)
+
+class DocumentSimilarityScore(BaseModel):
+    doc_id: str
+    text: str
+    similarity_score: float
+
+class TextSimilarityResponse(BaseModel):
+    query: str
+    method_used: str
+    results: List[DocumentSimilarityScore]
+    execution_time_ms: float
